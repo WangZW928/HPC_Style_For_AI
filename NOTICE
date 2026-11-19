@@ -1,0 +1,12 @@
+HPC_Style_For_AI
+Original project code and documentation are provided under the MIT License.
+
+The source excerpts and quoted evidence attributed to AMReX remain subject
+to the AMReX BSD-3-Clause license, reproduced in third_party/AMReX-LICENSE.
+The MIT License for this project's original material does not replace that
+third-party license. Quoted AMReX code is identified in docs/base-study.md
+and evidence/base-evidence.json.
+
+This project is independently maintained and is not endorsed by AMReX,
+the University of California, Lawrence Berkeley National Laboratory,
+or the U.S. Department of Energy.

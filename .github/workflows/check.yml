@@ -1,0 +1,28 @@
+name: Check
+on:
+  push:
+  pull_request:
+permissions:
+  contents: read
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        node: [22, 24]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: npm run check
+      - run: cmake -S . -B build-serial -DCMAKE_BUILD_TYPE=Release
+      - run: cmake --build build-serial --parallel 2
+      - run: ctest --test-dir build-serial --output-on-failure
+      - run: cmake -S . -B build-omp -DCMAKE_BUILD_TYPE=Release -DHPC_STYLE_OPENMP=ON
+      - run: cmake --build build-omp --parallel 2
+      - run: ctest --test-dir build-omp --output-on-failure
+      - run: npm pack

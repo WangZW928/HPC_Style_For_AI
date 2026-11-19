@@ -1,0 +1,40 @@
+{
+  "schema_version": 1,
+  "source": {
+    "project": "AMReX (local fork checkout)",
+    "commit": "7802c6ef997f8350c26d07a2e7326a4fe0c77fb8",
+    "remote": "https://github.com/WangZW928/amrex.git",
+    "browse_base": "https://github.com/WangZW928/amrex/blob/7802c6ef997f8350c26d07a2e7326a4fe0c77fb8/",
+    "read_date": "2026-11-19",
+    "scope": "Selected Src/Base implementations plus CONTRIBUTING; not a full-module audit",
+    "performance_measurements": false
+  },
+  "entries": [
+    {"id":"E01","path":"Src/Base/CMakeLists.txt","start":134,"end":164,"symbol":"Base source grouping","quote":"# Fortran data defined on unions of rectangles"},
+    {"id":"E02","path":"Src/Base/AMReX_MultiFab.H","start":24,"end":40,"symbol":"MultiFab hierarchy","quote":"public FabArray<FArrayBox>"},
+    {"id":"E03","path":"Src/Base/AMReX_DistributionMapping.H","start":119,"end":136,"symbol":"DistributionMapping::ProcessorMap","quote":"ProcessorMap()[i]"},
+    {"id":"E04","path":"Src/Base/AMReX_MFIter.H","start":11,"end":35,"symbol":"TilingIfNotGPU and MFItInfo","quote":"return Gpu::notInLaunchRegion();"},
+    {"id":"E05","path":"Src/Base/AMReX_FabFactory.H","start":48,"end":70,"symbol":"FabFactory control plane","quote":"virtual void destroy (FAB* fab) const = 0;"},
+    {"id":"E06","path":"Src/Base/AMReX_BaseFab.H","start":210,"end":233,"symbol":"BaseFab lifetime and move","quote":"virtual ~BaseFab () noexcept;"},
+    {"id":"E07","path":"Src/Base/AMReX_Array4.H","start":267,"end":318,"symbol":"ArrayND view state and const conversion","quote":"IntVectND<N> end{0};"},
+    {"id":"E07b","path":"Src/Base/AMReX_Array4.H","start":1300,"end":1306,"symbol":"Array4 alias","quote":"using Array4 = ArrayND<T, 4, true>;"},
+    {"id":"E08","path":"Src/Base/AMReX_BaseFab.H","start":241,"end":254,"symbol":"BaseFab::resize contract","quote":"only grows and never shrinks"},
+    {"id":"E09","path":"Src/Base/AMReX_TypeTraits.H","start":197,"end":213,"symbol":"IsCallable expression detection","quote":"struct IsCallable : IsDetected<detail::call_result_t, T, Args...> {};"},
+    {"id":"E10","path":"Src/Base/AMReX_ConstexprFor.H","start":26,"end":34,"symbol":"constexpr_for","quote":"f(std::integral_constant<decltype(I), I>());"},
+    {"id":"E11","path":"Src/Base/AMReX_BaseFab.H","start":1466,"end":1489,"symbol":"BaseFab::define static and dynamic decisions","quote":"if constexpr (std::is_same_v<T,float> || std::is_same_v<T,double>)"},
+    {"id":"E11b","path":"Src/Base/AMReX_FabArray.H","start":185,"end":214,"symbol":"Copy type constraints","quote":"std::is_convertible<typename SFAB::value_type,"},
+    {"id":"E12","path":"Src/Base/AMReX_Reduce.H","start":1032,"end":1043,"symbol":"Reduce::MinMax operation list","quote":"ReduceOps<ReduceOpMin,ReduceOpMax> reduce_op;"},
+    {"id":"E12b","path":"Src/Base/AMReX_Reduce.H","start":1373,"end":1384,"symbol":"CPU ReduceOps::eval","quote":"for (N i = 0; i < n; ++i)"},
+    {"id":"E13","path":"Src/Base/AMReX_Array4.H","start":949,"end":967,"symbol":"Array4 element offset and debug checks","quote":"n * stride.a[2]"},
+    {"id":"E13b","path":"Src/Base/AMReX_BaseFabUtility.H","start":219,"end":245,"symbol":"CPU blocked transpose","quote":"pdst[i + k*nxy] = psrc[k + i*nyz];"},
+    {"id":"E14","path":"Src/Base/AMReX_FabArrayBase.cpp","start":32,"end":57,"symbol":"Backend-dependent tile defaults","quote":"mfiter_tile_size(1024000,8,8)"},
+    {"id":"E15","path":"Src/Base/AMReX_Arena.H","start":178,"end":222,"symbol":"Arena accessibility and memory classes","quote":"isDeviceAccessible and isHostAccessible can both be true"},
+    {"id":"E15b","path":"Src/Base/AMReX_Arena.cpp","start":130,"end":139,"symbol":"Arena::streamOrderedFree base behavior","quote":"if (!isStreamOrderedArena())"},
+    {"id":"E16","path":"Src/Base/AMReX_FabArrayCommI.H","start":154,"end":165,"symbol":"Communication progress and local work","quote":"Hope for a bit of communication/computation overlap."},
+    {"id":"E16b","path":"Src/Base/AMReX_FabArray.H","start":3387,"end":3393,"symbol":"Synchronous FillBoundary wrapper","quote":"FillBoundary_finish<BUF>();"},
+    {"id":"E17","path":"Src/Base/AMReX_MFIter.cpp","start":245,"end":263,"symbol":"MFIter finalization synchronization","quote":"Gpu::streamSynchronize();"},
+    {"id":"E18","path":"Src/Base/AMReX_GpuLaunch.H","start":35,"end":45,"symbol":"Backend launch syntax adapter","quote":"#elif defined(AMREX_USE_HIP)"},
+    {"id":"E19","path":"CONTRIBUTING.md","start":210,"end":251,"symbol":"Official AMReX coding guidelines","quote":"Member variables should be prefixed with `m_`."},
+    {"id":"E20","path":"Src/Base/AMReX_FabArrayBase.H","start":77,"end":131,"symbol":"Mixed historical API naming","quote":"int local_size () const noexcept"}
+  ]
+}

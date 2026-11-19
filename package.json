@@ -1,0 +1,23 @@
+{
+  "name": "dsh-hpc-style-for-ai",
+  "version": "0.2.0",
+  "type": "module",
+  "author": "WangZW928",
+  "repository": { "type": "git", "url": "git+https://github.com/WangZW928/HPC_Style_For_AI.git" },
+  "homepage": "https://github.com/WangZW928/HPC_Style_For_AI#readme",
+  "bugs": { "url": "https://github.com/WangZW928/HPC_Style_For_AI/issues" },
+  "keywords": ["dsh-plugin", "hpc", "scientific-computing", "ai-skills", "performance-engineering"],
+  "description": "General HPC design and review principles, with optional implementation guidance and separately scoped source evidence.",
+  "main": "index.js",
+  "license": "MIT",
+  "engines": { "node": ">=22", "dsh": "0.2.1-rc.5" },
+  "peerDependencies": { "@deepseek-ai/dsh-skill": "0.2.1-rc.5" },
+  "dsh": { "manifestVersion": 1, "bundle": { "patch": "./cordis.patch.yml" } },
+  "exports": { ".": "./index.js", "./package.json": "./package.json" },
+  "files": ["index.js", "lib/", "skills/", "cordis.patch.yml", "README.md", "docs/", "evidence/", "LICENSE", "NOTICE", "third_party/", "scripts/", "test/", "examples/", "CMakeLists.txt"],
+  "scripts": {
+    "test": "node --test test/*.test.mjs",
+    "check": "node --check index.js && node --check lib/provider.mjs && npm test && python3 scripts/validate.py",
+    "prepack": "npm run check"
+  }
+}
