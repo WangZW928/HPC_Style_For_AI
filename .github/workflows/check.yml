@@ -26,3 +26,26 @@ jobs:
       - run: cmake --build build-omp --parallel 2
       - run: ctest --test-dir build-omp --output-on-failure
       - run: npm pack
+  kokkos-contracts:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+        with:
+          repository: kokkos/kokkos
+          ref: dc826b0fad122b57fee60223e86154aecb8e60f4
+          path: .source-kokkos
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python3 scripts/validate.py --kokkos-source .source-kokkos
+      - name: Build pinned host Kokkos
+        run: |
+          cmake -S .source-kokkos -B "$RUNNER_TEMP/kokkos-build" -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_STANDARD=20 -DKokkos_ENABLE_SERIAL=ON -DKokkos_ENABLE_OPENMP=ON -DKokkos_ENABLE_TESTS=OFF -DCMAKE_INSTALL_PREFIX="$RUNNER_TEMP/kokkos-install"
+          cmake --build "$RUNNER_TEMP/kokkos-build" --parallel 2
+          cmake --install "$RUNNER_TEMP/kokkos-build"
+      - name: Run host contract probes (not performance tests)
+        run: |
+          cmake -S . -B build-kokkos -DCMAKE_BUILD_TYPE=Release -DHPC_STYLE_KOKKOS=ON -DCMAKE_PREFIX_PATH="$RUNNER_TEMP/kokkos-install"
+          cmake --build build-kokkos --parallel 2
+          ctest --test-dir build-kokkos --output-on-failure

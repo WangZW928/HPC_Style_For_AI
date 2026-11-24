@@ -7,6 +7,14 @@ The MIT License for this project's original material does not replace that
 third-party license. Quoted AMReX code is identified in docs/base-study.md
 and evidence/base-evidence.json.
 
-This project is independently maintained and is not endorsed by AMReX,
+The Kokkos source excerpts and quoted evidence remain subject to the
+Apache License 2.0 with LLVM Exceptions, reproduced in third_party/Kokkos-LICENSE.
+The fixed source revision and excerpt locations are identified in
+docs/kokkos-study.md and evidence/kokkos-evidence.json. The contract probes
+in examples/kokkos_contracts.cpp are original project code, not copies of
+upstream tests. No code excerpts from bundled mdspan or desul are redistributed.
+The original plugin icon in assets/icon.svg is covered by this project's MIT License.
+
+This project is independently maintained and is not endorsed by Kokkos, AMReX,
 the University of California, Lawrence Berkeley National Laboratory,
 or the U.S. Department of Energy.

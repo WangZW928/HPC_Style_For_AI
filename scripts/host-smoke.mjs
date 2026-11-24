@@ -34,6 +34,10 @@ try {
     assert.ok(loaded.content.includes('绑定时机决策必须回答的问题'));
     const rulesPath = join(loaded.resourceBase.path, 'references/rules.md');
     assert.ok((await readFile(rulesPath, 'utf8')).includes('### G05'));
+    assert.ok(loaded.content.includes('references/execution-memory-contracts.md'));
+    const contractsPath = join(loaded.resourceBase.path, 'references/execution-memory-contracts.md');
+    assert.ok((await readFile(contractsPath, 'utf8')).includes('逻辑独立不必等于立即复制'));
+    assert.doesNotMatch(loaded.content, /Kokkos|kokkos-study|kokkos-evidence/);
     assert.ok(renderSkillContent(loaded).includes('<skill_content'));
     console.log('Real DSH SkillRegistry discovery, load, relative resources, rendering: passed');
 } finally {

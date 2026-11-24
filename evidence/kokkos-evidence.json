@@ -1,0 +1,480 @@
+{
+  "schema_version": 2,
+  "source": {
+    "project": "Kokkos",
+    "tag": "5.3.0",
+    "commit": "dc826b0fad122b57fee60223e86154aecb8e60f4",
+    "remote": "https://github.com/kokkos/kokkos.git",
+    "browse_base": "https://github.com/kokkos/kokkos/blob/dc826b0fad122b57fee60223e86154aecb8e60f4/",
+    "read_date": "2026-11-24",
+    "scope": "Selected public View/copy/policy interfaces, Serial/OpenMP execution implementations, selected CUDA contrasts, and selected upstream test source; not a full-library audit",
+    "performance_measurements": false
+  },
+  "local_validation": {
+    "kind": "original host-only contract probes, not upstream test-suite execution",
+    "source": "examples/kokkos_contracts.cpp",
+    "backends": [
+      "Serial",
+      "OpenMP"
+    ],
+    "compiler": "GNU C++ 13.3.0",
+    "cmake": "3.28.3",
+    "cxx_standard": 20,
+    "build_type": "Release",
+    "openmp_thread_counts": [
+      1,
+      4
+    ],
+    "effective_team_sizes": { "Serial": 1, "OpenMP_1thread": 1, "OpenMP_4threads": 2 },
+    "execution_configuration_checked": true,
+    "per_team_single_write_count_checked": true,
+    "ctest_passed": [
+      "owner_view_correctness",
+      "kokkos_contracts_1thread",
+      "kokkos_contracts_4threads"
+    ],
+    "checks": [
+      "logical layout conversion",
+      "managed shallow alias",
+      "HostSpace mirror alias versus independent allocation",
+      "strided logical copy",
+      "host scalar, rank-zero View and empty integer reduction",
+      "exclusive scan exact prefixes and final-pass side-effect counts",
+      "TeamThreadRange scratch producer/consumer with team barrier and single"
+    ],
+    "not_covered": [
+      "CUDA execution",
+      "HIP/SYCL/HPX and other backends",
+      "cross-device transfers",
+      "actual asynchronous overlap",
+      "all upstream tests",
+      "floating-point reproducibility",
+      "invalid input death tests",
+      "performance measurements"
+    ]
+  },
+  "entries": [
+    {
+      "id": "KM01",
+      "path": "core/src/View/Kokkos_BasicView.hpp",
+      "start": 119,
+      "end": 137,
+      "symbol": "Kokkos::Impl::BV::BasicView",
+      "quote": "mdspan<ElementType, Extents, LayoutPolicy, AccessorPolicy>;",
+      "principles": [
+        "G03",
+        "G04",
+        "G05"
+      ],
+      "observation": "BasicView 从 mdspan_type 取得 extents、layout、mapping、accessor、data_handle 等类型。Kokkos_View.hpp:154–166 将传统 ViewTraits 转成 BasicView 参数，:326–328 的 View 继承该 BasicView。TestBasicView.hpp:64–95 检查 allocation、extent、size，兼有固定与动态 extent。",
+      "limits": "这是5.3.0的具体实现选择，不要求其他工程复制 mdspan 或类层次；BasicView 不等于无所有权 std::mdspan。本轮只读测试，未执行。",
+      "validation": "编译固定与动态 extents 的最小用例，断言 mapping/accessor/data_handle 类型与运行期 extent；若底层不再通过 BasicView/mdspan，本描述失效。",
+      "file_sha256": "d46ebad98c27f0cc9b74f77298d1aa52684cc123498d61f267aa0ac983a0f119"
+    },
+    {
+      "id": "KM02",
+      "path": "core/src/View/MDSpan/Kokkos_MDSpan_Accessor.hpp",
+      "start": 288,
+      "end": 320,
+      "symbol": "ReferenceCountedDataHandle constructors",
+      "quote": ": m_tracker(other.m_tracker), m_handle(ptr) {}",
+      "principles": [
+        "G03",
+        "G07"
+      ],
+      "observation": "分配记录构造装入 tracker；子视图构造共享 tracker 而改变数据指针；裸指针 unmanaged 构造建立空 tracker。:339 的 use_count 委托 tracker。TestViewMapping_a.hpp:601–635 检查 managed 浅复制 count=2，unmanaged 转回普通 View 后 count 仍为0。",
+      "limits": "managed View 可以共享资源生命周期；unmanaged 转换不恢复所有权。引用计数不证明异步消费者完成。本轮未核验所有后端引用计数行为。",
+      "validation": "在嵌套作用域逐步释放 managed alias，核对引用计数；原 owner 存活时核对 unmanaged alias 的 count 始终为0。禁止将释放后解引用的未定义行为当作验证。",
+      "file_sha256": "2d977f8e013bca17aad1c97956afba7e3771ff4aa8c0587f764960771a198e84"
+    },
+    {
+      "id": "KM03",
+      "path": "core/src/View/Kokkos_ViewAlloc.hpp",
+      "start": 259,
+      "end": 270,
+      "symbol": "make_shared_allocation_record",
+      "quote": "record->m_destroy.construct_shared_allocation();",
+      "principles": [
+        "G02",
+        "G03",
+        "G04",
+        "G07"
+      ],
+      "observation": "非零分配且 Initialize=true 才登记销毁 functor 并构造元素。:145–150 中平凡默认构造类型走 zero_memset，其余走 parallel_for；:115–118 默认实例或销毁时 fence，:140–141 默认实例 memset 后 fence。BasicView:create_data_handle:374–390 区分显式与缺省执行实例。",
+      "limits": "WithoutInitializing 不只是省略填零：这里也不登记对象销毁。显式实例初始化未必返回即完成，非平凡类型需另行满足对象生命周期条件。TestBasicView 的已读断言不覆盖所有初始化时序；未测耗时。",
+      "validation": "用工具回调记录默认实例、显式实例、WithoutInitializing 的初始化提交与 fence；用非平凡测试类型计数构造/析构。不读取未初始化数据来判断正确性或速度。",
+      "file_sha256": "18d4f44b050ec22dd9178960973f8a825ac93e06b224932adefb051915ec09c1"
+    },
+    {
+      "id": "KM04",
+      "path": "core/src/Kokkos_Concepts.hpp",
+      "start": 366,
+      "end": 388,
+      "symbol": "SpaceAccessibility",
+      "quote": "enum { accessible = exe_access::accessible };",
+      "principles": [
+        "G03",
+        "G07",
+        "G12"
+      ],
+      "observation": "accessible 是执行空间对应 memory_space 到目标 MemorySpace 的类型关系；assignable 另依赖 mem_access。此 trait 不执行等待或迁移。CopyViews:2501–2523 在可达关系外显式分派与 fence；DualView:547–552 相同 memory_space 仍可需要 fence。",
+      "limits": "只核验通用定义，未逐项核验 CUDA/HIP/SYCL 等特化；可达性不等于数据最新、执行完成或访问成本相同。",
+      "validation": "在支持的异步配置比较 trait=true 但缺生产者完成依赖的消费者，与建立正确事件/fence的参照；检查 trait 本身是否有任何运行时同步行为。",
+      "file_sha256": "d5f9025be4238062b6e452ce83e31c61c03bb406b7c6176a01cfd6f1097f0258"
+    },
+    {
+      "id": "KM05",
+      "path": "core/src/Kokkos_View.hpp",
+      "start": 459,
+      "end": 464,
+      "symbol": "View::span / span_is_contiguous",
+      "quote": "return base_t::mapping().required_span_size();",
+      "principles": [
+        "G03",
+        "G04"
+      ],
+      "observation": "span 来自 mapping.required_span_size，连续性来自 is_exhaustive，而非形状乘积。BasicView:593–607 用 submdspan_mapping 与 accessor.offset 构造子视图。TestViewAPI_b:8–35 检查显式 padded stride；TestViewMapping_a:670–686 检查镜像保留 extent/stride。",
+      "limits": "相同 shape/layout 名字不保证 stride 一样；连续性不单独证明适合算法或更快。本轮未测访存性能。",
+      "validation": "对 padded left/right 及切片逐项核对元素地址差、stride、span、is_exhaustive；使用 extent 乘积预测 span 的实现应被带间隙案例反驳。",
+      "file_sha256": "aa5b32d630462431a63e9f2615e3591c23976a4baa1b89041617c7174b7675f9"
+    },
+    {
+      "id": "KM06",
+      "path": "core/src/Kokkos_CopyViews.hpp",
+      "start": 1313,
+      "end": 1339,
+      "symbol": "deep_copy(dst,src), nonzero-rank View overload",
+      "quote": "Impl::view_copy(dst, src);",
+      "principles": [
+        "G04",
+        "G07"
+      ],
+      "observation": "字节复制要求元素兼容、布局兼容或双方rank1、双方连续且stride相等；字节复制前及实际复制后全局 fence，逐元素 fallback 前后亦 fence。:1244–1269 的 null/same-span 返回也 fence。TestDeepCopy.hpp:24–42 区分无实例直接检查与带实例先 fence 再检查。",
+      "limits": "锁定非零秩 View→View 重载，标量/rank0 另有实现。工具 endDeepCopy 事件不单独证明后端完成；本轮未运行测试。",
+      "validation": "在异步后端安排延迟生产者，并记录 fence 回调与返回前结果；若后续版本撤掉这些 fence，更新证据，不沿用无条件同步结论。",
+      "file_sha256": "2657bcb83cd63b7ec68b12286254a95f08fc114afe8592f9bd8855c21288974f"
+    },
+    {
+      "id": "KM07",
+      "path": "core/src/Kokkos_CopyViews.hpp",
+      "start": 2484,
+      "end": 2527,
+      "symbol": "deep_copy(exec_space,dst,src), nonzero-rank View overload",
+      "quote": "Impl::view_copy(exec_space, dst, src);",
+      "principles": [
+        "G07",
+        "G12",
+        "G04"
+      ],
+      "observation": "字节复制把指定实例传给 DeepCopy；实例可访问两端时直接提交 view_copy，公共层无末尾 fence。指定实例不可同时访问而其他域可访问时，:2517–2523 fence指定实例、切换拷贝域并等待；否则抛出需要临时分配的异常。TestDeepCopy.hpp:37–42 带实例复制后显式 fence。",
+      "limits": "带实例不保证绝不阻塞，fallback 已构成反例；公共层无 fence 不证明某后端真正重叠，也不满足其他实例生产者的依赖。",
+      "validation": "分别覆盖实例可达与切换执行域路径，记录提交/fence；对两个独立实例显式建立事件或等待依赖，与缺依赖版本比较，不以返回快断言重叠。",
+      "file_sha256": "2657bcb83cd63b7ec68b12286254a95f08fc114afe8592f9bd8855c21288974f"
+    },
+    {
+      "id": "KM08",
+      "path": "core/src/Kokkos_CopyViews.hpp",
+      "start": 3183,
+      "end": 3204,
+      "symbol": "Impl::create_mirror_view",
+      "quote": "return typename Kokkos::View<T, P...>::host_mirror_type(src);",
+      "principles": [
+        "G03",
+        "G04",
+        "G10"
+      ],
+      "observation": "未给 memory_space 时，memory_space 和 data_type 均同 host_mirror 才浅构造；给空间且 is_same_memspace 时返回源 alias，其余调用 create_mirror 分配。TestViewAPI.hpp:707–741 对比 create_mirror 独立指针与 create_mirror_view 条件相同指针。",
+      "limits": "create_mirror_view 不总分配，也不表示源内容已复制；默认重载还有 data_type 条件，不能只写 host 可达就别名。",
+      "validation": "同/异空间分别比较 data 指针；同空间 alias 写入应反映到源；独立 mirror 只在显式复制后检查其内容。",
+      "file_sha256": "2657bcb83cd63b7ec68b12286254a95f08fc114afe8592f9bd8855c21288974f"
+    },
+    {
+      "id": "KM09",
+      "path": "core/src/Kokkos_CopyViews.hpp",
+      "start": 3282,
+      "end": 3306,
+      "symbol": "create_mirror_view_and_copy",
+      "quote": "return src;",
+      "principles": [
+        "G02",
+        "G03",
+        "G07"
+      ],
+      "observation": "同空间直接返回 alias；未给执行实例时返回前 fence，给实例跳过该 fence。异空间默认补 WithoutInitializing 构造 mirror，再按用户是否给实例选择 deep_copy 重载。TestViewAPI.hpp:748–768 检查条件指针相等。",
+      "limits": "and_copy 名字不保证实际搬运；同空间可能共享资源；给实例没有无条件 host-ready 保证。未核验 custom accessor 镜像状态保留。",
+      "validation": "回调分别计数分配、初始化、deep_copy、fence；同空间有无实例应区分 fence，异空间应执行复制而不做冗余初始化，并注明测试配置。",
+      "file_sha256": "2657bcb83cd63b7ec68b12286254a95f08fc114afe8592f9bd8855c21288974f"
+    },
+    {
+      "id": "KM10",
+      "path": "core/src/Kokkos_CopyViews.hpp",
+      "start": 1253,
+      "end": 1288,
+      "symbol": "deep_copy alias / overlap handling",
+      "quote": "Error: Kokkos::deep_copy of overlapping views: ",
+      "principles": [
+        "G01",
+        "G03",
+        "G10"
+      ],
+      "observation": "不同句柄同一连续 span 时，无实例重载 fence 后返回；连续部分重叠则抛异常。:1112–1120 另按 view 对象地址检测同一参数，关闭 DEPRECATED_CODE_5 时 abort。TestDeepCopy_SameArgument.hpp:15–45 按该配置覆盖同一参数的 no_throw/death。",
+      "limits": "检测部分重叠的条件包含双方连续，未证明覆盖所有非连续交叠。same object 与不同对象同 span 是两种情况，不把 copy 当 memmove。",
+      "validation": "分别构造同一对象、不同对象同span、连续部分重叠、非连续交叠，核对失败行为及完成语义；非连续案例使用独立参考，不把未报错当正确。",
+      "file_sha256": "2657bcb83cd63b7ec68b12286254a95f08fc114afe8592f9bd8855c21288974f"
+    },
+    {
+      "id": "KM11",
+      "path": "containers/src/Kokkos_DualView.hpp",
+      "start": 781,
+      "end": 819,
+      "symbol": "DualView::modify_host / modify_device",
+      "quote": "Concurrent modification of host and device views ",
+      "principles": [
+        "G03",
+        "G07",
+        "G10"
+      ],
+      "observation": "modify 更新 host 端 modified_flags 计数，双侧dirty时 abort，不搬运数据。:525–543 sync 根据标志才 deep_copy 并清零；:281–293 复制和子视图共享标志及数据。TestDualView.hpp:70–93 检查 a.modify_host 后浅复制 b/c 也 need_sync_device。",
+      "limits": "直接写 view 不会自动被发现，调用方须标记；single-device分支直接返回；标志不是线程安全合并或通用数据竞争检测器。",
+      "validation": "对共享alias执行 modify→need_sync→sync→清标志；漏modify应显示协议未跟踪写入，双侧dirty用death测试；异步实例另建完成依赖。",
+      "file_sha256": "2ddcc2257df382b31b575c58d9ecb98b462b243a8d38fda280f120aef81f5eba"
+    },
+    {
+      "id": "KM12",
+      "path": "containers/src/Kokkos_DualView.hpp",
+      "start": 547,
+      "end": 580,
+      "symbol": "DualView::sync / sync_impl",
+      "quote": "// FIXME_DUALVIEW_ASYNCHRONOUS_BACKENDS",
+      "principles": [
+        "G07",
+        "G11",
+        "G12"
+      ],
+      "observation": "sync_impl 在相同memory_space时仍分别 fence host/device执行域；但 single-device 时两个sync重载直接返回并保留该FIXME。single-device按:186–188的device_type相同定义。TestDualView.hpp:485–539 检查10000次atomic_add后sync再读值，HPX明确skip。",
+      "limits": "不把sync描述成全部配置全局等待或必定host-ready；测试名字不等于所有后端通过。未运行这些测试，HPX实际行为尚未核验。",
+      "validation": "分别在Serial与真实异步host/accelerator运行现有sync测试，记录通过、失败和skip；显式实例版本另以对应实例fence/事件作为参照。",
+      "file_sha256": "2ddcc2257df382b31b575c58d9ecb98b462b243a8d38fda280f120aef81f5eba"
+    },
+    {
+      "id": "KE01",
+      "path": "core/src/Kokkos_ExecPolicy.hpp",
+      "start": 153,
+      "end": 167,
+      "symbol": "ImplRangePolicy<ExecSpace, Properties...>::ImplRangePolicy(work_space, work_begin, work_end)",
+      "quote": ": m_space(work_space),",
+      "principles": [
+        "G03",
+        "G05",
+        "G07",
+        "G12"
+      ],
+      "observation": "策略静态类型确定执行空间类别，运行时仍保存传入的实例与范围；同文件86–104行暴露m_space/space()，140–149行无实例重载默认构造执行空间。类型选择不等于具体队列或资源归属已全部确定。",
+      "limits": "未审查全部实例构造/partition_space；实例拷贝不应推断为创建新队列，同类型实例也不等于天然独立。",
+      "validation": "源码范围和逐字quote已校验；待做显式/默认实例的生产者消费者与fence时间线测试，先确认实例共享关系，再验证缓冲复用。",
+      "file_sha256": "955cca9490d623af0be6f70808f60980a4557a82a84ade61a2e4b29b13068455"
+    },
+    {
+      "id": "KE02",
+      "path": "core/src/Kokkos_Parallel_For.hpp",
+      "start": 28,
+      "end": 43,
+      "symbol": "Impl::parallel_for_dispatch",
+      "quote": "const auto& inner_policy = response.policy;",
+      "principles": [
+        "G04",
+        "G05",
+        "G09",
+        "G10"
+      ],
+      "observation": "公共入口接受Tools返回的policy后构造静态ParallelFor<FunctorType, ExecPolicy>并execute。109–126行整数入口推导执行空间并生成RangePolicy；Kokkos_Parallel_Reduce.hpp:199–235与Kokkos_Parallel_Scan.hpp:29–46同样经后端closure路由。静态路由和提交阶段调参并存。",
+      "limits": "统一入口不提供统一完成/成本保证；未审查Tools调参所有实现，不声称本次实际改变policy或加速；end事件不等于设备完成。",
+      "validation": "源码范围和逐字quote已校验；待编译显式Range/MDRange/Team及整数入口组合并记录Tools前后policy和后端时间线。",
+      "file_sha256": "7768accdf1d7cf0a5b162711b3f0053bb82aff884cc94a8f3522681a5e9205ca"
+    },
+    {
+      "id": "KE03",
+      "path": "core/src/OpenMP/Kokkos_OpenMP_Parallel_For.hpp",
+      "start": 92,
+      "end": 130,
+      "symbol": "ParallelFor<FunctorType, RangePolicy<...>, OpenMP>::execute",
+      "quote": "// Serialize kernels on the same execution space instance",
+      "principles": [
+        "G02",
+        "G04",
+        "G07",
+        "G11",
+        "G12"
+      ],
+      "observation": "此OpenMP路径锁实例后执行omp parallel域并在迭代结束后返回；Serial/Kokkos_Serial_Parallel_Range.hpp:20–49直接循环。CUDA的Cuda/Kokkos_Cuda_Parallel_Range.hpp:85–114提交到policy实例，Cuda/Kokkos_Cuda_KernelLaunch.hpp:424–435在其stream上发射kernel。CPU完成返回与CUDA普通发射返回需分别描述。",
+      "limits": "不能把CPU同步返回推广到全部后端；CUDA debug可隐式等待，见KE12；实例锁不建立跨实例依赖。本子任务未运行任何后端。",
+      "validation": "源码范围和逐字quote已校验；待分开测调用返回与实例fence后的时间，trace标记host/设备边界并注明编译宏。",
+      "file_sha256": "48152f6c6e547db7ac46808ecb9204f6e5d3573608b0beb58b83154f59bb8964"
+    },
+    {
+      "id": "KE04",
+      "path": "core/src/Kokkos_Parallel_Reduce.hpp",
+      "start": 264,
+      "end": 281,
+      "symbol": "parallel_reduce_needs_fence / ParallelReduceFence::fence",
+      "quote": "return result.references_scalar();",
+      "principles": [
+        "G03",
+        "G04",
+        "G07",
+        "G10"
+      ],
+      "observation": "reducer可动态报告是否引用scalar；View结果不触发这一层fence，其他结果默认触发，299–304行使用policy.space()。Kokkos_Parallel_Scan.hpp:60–79也对非View结果fence。输出载体影响完成契约，不只是存储形式。",
+      "limits": "View没有此层fence不等于必然异步；后端自身或debug仍可同步；给定实例fence不等于全系统同步。",
+      "validation": "源码范围和逐字quote已校验；待对比scalar、rank-0 View与references_scalar不同reducer，检查结果消费前等待及trace。",
+      "file_sha256": "34f27b59f404eba531d1160c7049224be451e51acce84851c72cb0723094336e"
+    },
+    {
+      "id": "KE05",
+      "path": "core/src/OpenMP/Kokkos_OpenMP_Parallel_Reduce.hpp",
+      "start": 114,
+      "end": 141,
+      "symbol": "ParallelReduce<..., RangePolicy<...>, OpenMP>::execute",
+      "quote": "reducer.join(ptr,",
+      "principles": [
+        "G01",
+        "G06",
+        "G11",
+        "G12"
+      ],
+      "observation": "线程各自init并累积，最终按线程槽join和final；动态调度还可窃取工作。Serial/Kokkos_Serial_Parallel_Range.hpp:122–126是一次init后的顺序exec/final。并行化可改变运算分组与输入组合顺序，数学等价与浮点逐位等价应分开。",
+      "limits": "典型归约需中性元和可结合组合，并满足实际顺序变化的契约；不将交换律无条件要求于所有归约，也不将固定线程槽join顺序当跨配置可复现证明。",
+      "validation": "源码范围和逐字quote已校验；待对空域、单元素、随机分组及不同线程数/调度做独立精确或高精度参照，分开检查容差与逐位一致。",
+      "file_sha256": "aef43c0f1e0d66218a15f04a417617958a034f2784c2878ef7c74b73a010c60f"
+    },
+    {
+      "id": "KE06",
+      "path": "core/src/OpenMP/Kokkos_OpenMP_Parallel_Scan.hpp",
+      "start": 87,
+      "end": 125,
+      "symbol": "ParallelScan<FunctorType, RangePolicy<...>, OpenMP>::execute",
+      "quote": "m_functor, range.begin(), range.end(), update_sum, false);",
+      "principles": [
+        "G01",
+        "G04",
+        "G07",
+        "G11"
+      ],
+      "observation": "OpenMP常规路径先false遍累积，再rendezvous/join前缀，125行true遍完成输出。Serial/Kokkos_Serial_Parallel_Range.hpp:165–181只以true调用；未受final_pass保护的外部副作用可能被Serial掩盖。",
+      "limits": "观察到本路径两遍不构成跨后端恰好两次的API保证；累加update仍须在各阶段正确执行，不能把全部计算都放入final_pass。",
+      "validation": "源码范围和逐字quote已校验；待分开统计非final/final外部写入次数，并以顺序参照覆盖空域、块边界和线程数。",
+      "file_sha256": "09b61230178ef1b4a625897dd5f5c533fd83ec350419e27e3dd54e800e96fa6b"
+    },
+    {
+      "id": "KE07",
+      "path": "core/src/Kokkos_ExecPolicy.hpp",
+      "start": 269,
+      "end": 290,
+      "symbol": "ImplRangePolicy::check_conversion_safety",
+      "quote": "(static_cast<IndexType>(static_cast<member_type>(bound)) != bound);",
+      "principles": [
+        "G01",
+        "G05",
+        "G10",
+        "G11"
+      ],
+      "observation": "Range检查转换回转与上下界。KokkosExp_MDRangePolicy.hpp:437–487检查逐维边界、总flat extent与乘法溢出，228–234静态rank<7；impl/Kokkos_AnalyzePolicy.hpp:218–221默认index_type取execution_space::index_type。",
+      "limits": "已有检查不证明所有内部中间表达式无溢出；MDRange:565–567保留tile转int的FIXME。未系统检查全部device侧入口，不沿用旧版默认unsigned假设。",
+      "validation": "源码范围和逐字quote已校验；待测试窄化回转失败、正负临界、反向区间及各维合法而总乘积超限，预期abort需隔离运行。",
+      "file_sha256": "955cca9490d623af0be6f70808f60980a4557a82a84ade61a2e4b29b13068455"
+    },
+    {
+      "id": "KE08",
+      "path": "core/src/KokkosExp_MDRangePolicy.hpp",
+      "start": 498,
+      "end": 558,
+      "symbol": "MDRangePolicy::update_tiling_properties",
+      "quote": "if constexpr (enforce_launch_bounds && launch_bounds::maxTperB != 0) {",
+      "principles": [
+        "G02",
+        "G05",
+        "G06",
+        "G12"
+      ],
+      "observation": "运行时实例提供tile资源上限，静态LaunchBounds可收紧上限，未给或非正tile由推荐值补足并缩小至可行范围；570–595检查显式tile限制。OpenMP/Kokkos_OpenMP_Parallel_For.hpp:145–186以HostIterateTile处理tile编号，静态traits与动态形状/资源共同决定执行。",
+      "limits": "推荐tile和资源合法性都不是最优性能证明；tile合法不意味着局部性或负载均衡良好。",
+      "validation": "源码范围和逐字quote已校验；待记录实际tile和tile数，覆盖各向异性与偏斜工作量；数值通过后再测端到端收益。",
+      "file_sha256": "a6c96ae5c5a543428a07e97d40c0d595a3ae75afdec9d1439d3a2909d9f5b905"
+    },
+    {
+      "id": "KE09",
+      "path": "core/src/OpenMP/Kokkos_OpenMP_Team.hpp",
+      "start": 110,
+      "end": 142,
+      "symbol": "TeamPolicyInternal<OpenMP,...>::init",
+      "quote": "const int team_count = pool_size / team_size_grain;",
+      "principles": [
+        "G02",
+        "G03",
+        "G06",
+        "G08",
+        "G12"
+      ],
+      "observation": "team受线程池、最大成员和grain约束，影响并发team数；156–159行scratch=per_team+team_size*per_thread。Serial/Kokkos_Serial_Parallel_Team.hpp:86–123固定team_size=1。CUDA的Cuda/Kokkos_Cuda_Parallel_Team.hpp:179–185归一化vector长度，254–281检查league与team_size*vector_length。",
+      "limits": "最大可行值不等于最佳值；host vector_length_max=1024是注释所称vectorizable length，而Serial/OpenMP实际impl_vector_length=1，不能当作物理lane数。",
+      "validation": "源码范围和逐字quote已校验；待覆盖最小/最大/超限team、非2次幂vector请求与scratch随team变化；实验记录effective值而非仅请求值。",
+      "file_sha256": "c4164d861739e6af8c8d655d9ed8009c5ab99406fc8875b80ab7c9992c0cc5d6"
+    },
+    {
+      "id": "KE10",
+      "path": "core/src/Cuda/Kokkos_Cuda_Team.hpp",
+      "start": 463,
+      "end": 478,
+      "symbol": "parallel_for(TeamThreadRangeBoundariesStruct<..., CudaTeamMember>, closure)",
+      "quote": "for (iType i = loop_boundaries.start + threadIdx.y;",
+      "principles": [
+        "G01",
+        "G06",
+        "G07",
+        "G11",
+        "G12"
+      ],
+      "observation": "TeamThreadRange用threadIdx.y划分且无x==0过滤，vector_length>1时不使用vector语义的副作用可能由多个lane重复执行。643–650行ThreadVectorRange只在当前逻辑thread的x lanes内分工，各team线程调用同一范围也不自动team-wide去重；989–1008的single按x或x/y选择单次执行。",
+      "limits": "合法vector协作不等于错误重复，应以输出副作用的预期作用域判断。Serial宽度1可能隐藏错误；本次CUDA仅静态阅读，没有设备验证。",
+      "validation": "源码范围和逐字quote已校验；待用原子计数检查每索引副作用重数，改变team/vector并比较裸TeamThreadRange、嵌套ThreadVectorRange和恰当single作用域。",
+      "file_sha256": "712ec692b6e34347a23208f5182743dd21f9237563e652f1100bf3326e9b12a1"
+    },
+    {
+      "id": "KE11",
+      "path": "core/src/impl/Kokkos_HostThreadTeam.hpp",
+      "start": 422,
+      "end": 445,
+      "symbol": "HostThreadTeamMember::team_scratch / thread_scratch / team_barrier",
+      "quote": "return m_scratch.set_team_thread_mode(0, 1, 0);",
+      "principles": [
+        "G03",
+        "G04",
+        "G06",
+        "G07"
+      ],
+      "observation": "scratch模式区分team共享与thread切分，team_barrier做team rendezvous。CUDA Cuda/Kokkos_Cuda_Team.hpp:69–94保留level并用__syncthreads，ThreadVectorRange:652–679只有vector mask的__syncwarp。Host nested parallel_for:730–767及CUDA TeamThreadRange:463–478无末尾team barrier。",
+      "limits": "局部vector同步不代替team同步，team barrier不完成其他team/league或host工作；scratch不是跨kernel持久存储；此host team_scratch(int)忽略level，不推断同名level同物理含义。集体barrier应一致参与。",
+      "validation": "源码范围和逐字quote已校验；待用两阶段scratch生产/消费与哨兵数据测试，比较必要team_barrier与vector-only同步，并用竞争检测而非偶然结果判断依赖。",
+      "file_sha256": "fd7b357473c166f3262d0350dd58c873a05efa9609790a3b2aea8b3850bd6630"
+    },
+    {
+      "id": "KE12",
+      "path": "core/src/Cuda/Kokkos_Cuda_Instance.cpp",
+      "start": 262,
+      "end": 266,
+      "symbol": "CudaInternal::fence",
+      "quote": "Impl::cuda_stream_synchronize(m_stream, this, name);",
+      "principles": [
+        "G04",
+        "G05",
+        "G07",
+        "G11",
+        "G12"
+      ],
+      "observation": "149–155行实例fence落到cudaStreamSynchronize，629–634区分静态device同步与实例同步。Cuda/Kokkos_Cuda_KernelLaunch.hpp:759–765在DEBUG_BOUNDS_CHECK构建中发射后fence；747–756通过静态contains_desired_occupancy裁剪分支后读取运行时occupancy值。",
+      "limits": "实例同步不等于所有设备或所有实例同步；debug时间线不代表release，附加等待还会掩盖依赖缺陷。未运行CUDA，未证明实际重叠或性能。",
+      "validation": "源码范围和逐字quote已校验；待在debug bounds开关配置分别跟踪实例/stream与全局fence，检查依赖并注明测量构建模式。",
+      "file_sha256": "cca2e1d9ade88999a5a57413331a3506ee34f091aa65a5331b0577b8dd48d5e8"
+    }
+  ]
+}
